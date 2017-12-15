@@ -146,23 +146,25 @@ namespace MonoDevelop.Ide.BuildOutputView
 			OutputChanged?.Invoke (this, EventArgs.Empty);
 		}
 
-		public async Task<(string, IList<IFoldSegment>)> ToTextEditor (TextEditor editor, bool includeDiagnostics)
+		public (string, IList<IFoldSegment>, List<BuildOutputProcessor>) ToTextEditor (TextEditor editor, bool includeDiagnostics)
 		{
 			var buildOutput = new StringBuilder ();
 			var foldingSegments = new List<IFoldSegment> ();
+			var projectProcessors = new List<BuildOutputProcessor> ();
 
 			foreach (var p in projects) {
 				p.Process ();
-				var (s, l) = await p.ToTextEditor (editor, includeDiagnostics, buildOutput.Length);
+				var (s, l) = p.ToTextEditor (editor, includeDiagnostics, buildOutput.Length);
 				if (s.Length > 0) {
 					buildOutput.Append (s);
 					if (l.Count > 0) {
 						foldingSegments.AddRange (l);
 					}
 				}
+				projectProcessors.Add (p);
 			}
 
-			return (buildOutput.ToString (), foldingSegments);
+			return (buildOutput.ToString (), foldingSegments, projectProcessors);
 		}
 
 		bool disposed = false;

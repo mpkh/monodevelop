@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -35,6 +36,7 @@ using MonoDevelop.Ide.Gui;
 using MonoDevelop.Ide.Gui.Dialogs;
 using MonoDevelop.Components;
 using MonoDevelop.Core;
+using MonoDevelop.Ide.BuildOutputView;
 
 namespace MonoDevelop.Ide.BuildOutputView
 {
@@ -52,6 +54,50 @@ namespace MonoDevelop.Ide.BuildOutputView
 			Initialize ();
 
 			SetupBuildOutput (output);
+		}
+
+		public void GoTo (Tasks.TaskListEntry t)
+		{
+			//editor.
+			if (buildOutputProcessors == null)
+				return;
+
+			var mainProcessor = buildOutputProcessors [0];
+
+			//this is not 
+			var moreTargets = mainProcessor.SearchNodes (BuildOutputNodeType.Target)
+			                               .Select (s => s?.Message?.StartsWith ("Target \"CoreCompile\"", StringComparison.Ordinal) )    
+			                               .ToArray ();
+
+			//check for errors
+
+			var errors = mainProcessor.SearchNodes (BuildOutputNodeType.Error)
+			                          .ToArray ();
+
+			var ErrorMessage = t.Description.Replace (string.Concat (" (", t.Code, ")"), "").Trim ();
+
+
+			var errorNode = errors.FirstOrDefault (s => s.Message == ErrorMessage);
+
+			var position = mainProcessor.GetDocumentRegion (errorNode);
+
+
+			//var coreCompileTarget = moreTargets.FirstOrDefault (s => s.Target == "CoreCompile");
+
+			//var allErrors = coreCompileTarget.GetErrors ();
+
+			EditorSelect (position);
+			//EditorSelect (new DocumentRegion (t.Line, t.Column, 0, 0));
+		}
+
+		protected void EditorSelect (DocumentRegion region)
+		{
+			int s = editor.LocationToOffset (region.BeginLine, region.BeginColumn);
+			int e = editor.LocationToOffset (region.EndLine, region.EndColumn);
+			if (s > -1 && e > s) {
+				editor.SetSelection (s, e);
+				editor.ScrollTo (s);
+			}
 		}
 
 		public BuildOutputWidget (FilePath filePath)
@@ -115,8 +161,11 @@ namespace MonoDevelop.Ide.BuildOutputView
 			base.OnDestroyed ();
 		}
 
-		void SetupTextEditor (string text, IList<IFoldSegment> segments)
+		List<BuildOutputProcessor> buildOutputProcessors;
+
+		void SetupTextEditor (string text, IList<IFoldSegment> segments, List<BuildOutputProcessor> processors)
 		{
+			buildOutputProcessors = processors;
 			editor.Text = text;
 			if (segments != null) {
 				editor.SetFoldings (segments);
@@ -125,18 +174,18 @@ namespace MonoDevelop.Ide.BuildOutputView
 
 		CancellationTokenSource cts;
 
-		void ProcessLogs (bool showDiagnostics)
+		public async Task ProcessLogs (bool showDiagnostics)
 		{
 			cts?.Cancel ();
 			cts = new CancellationTokenSource ();
 
-			Task.Run (async () => {
-				var (text, segments) = await BuildOutput.ToTextEditor (editor, showDiagnostics);
+			await Task.Run (async () => {
+				var (text, segments, processors) = BuildOutput.ToTextEditor (editor, showDiagnostics);
 
 				if (Runtime.IsMainThread) {
-					SetupTextEditor (text, segments);
+					SetupTextEditor (text, segments, processors);
 				} else {
-					await Runtime.RunInMainThread (() => SetupTextEditor (text, segments));
+					await Runtime.RunInMainThread (() => SetupTextEditor (text, segments, processors));
 				}
 			}, cts.Token);
 		}

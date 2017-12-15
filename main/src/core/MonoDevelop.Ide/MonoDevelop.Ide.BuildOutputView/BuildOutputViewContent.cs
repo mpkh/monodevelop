@@ -43,6 +43,11 @@ namespace MonoDevelop.Ide.BuildOutputView
 			control = new BuildOutputWidget (filename);
 		}
 
+		public void GoTo (Tasks.TaskListEntry t) 
+		{
+			control.GoTo (t);
+		}
+
 		public BuildOutputViewContent (BuildOutput buildOutput)
 		{
 			ContentName = GettextCatalog.GetString ("Build Output");

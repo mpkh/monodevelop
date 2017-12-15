@@ -385,6 +385,11 @@ namespace MonoDevelop.Ide.Gui.Pads
 			help.Activated += OnShowReference;
 			group.Add (help, "F1");
 
+			var goBuild = new Gtk.Action ("goto", GettextCatalog.GetString ("Go to Log"),
+			                              GettextCatalog.GetString ("Go to Structure Log Output"), Gtk.Stock.JumpTo);
+			goBuild.Activated += OnGoToLog;
+			group.Add (goBuild, "F2");
+
 			var copy = new Gtk.Action ("copy", GettextCatalog.GetString ("_Copy"),
 				GettextCatalog.GetString ("Copy task"), Gtk.Stock.Copy);
 			copy.Activated += OnTaskCopied;
@@ -453,6 +458,7 @@ namespace MonoDevelop.Ide.Gui.Pads
 
 			string uiStr = "<ui><popup name='popup'>"
 				+ "<menuitem action='help'/>"
+				+ "<menuitem action='goto'/>"
 				+ "<menuitem action='copy'/>"
 				+ "<menuitem action='jump'/>"
 				+ "<separator/>"
@@ -573,6 +579,29 @@ namespace MonoDevelop.Ide.Gui.Pads
 			clipboard.Text = text.ToString ();
 			clipboard = Clipboard.Get (Gdk.Atom.Intern ("PRIMARY", false));
 			clipboard.Text = text.ToString ();
+		}
+
+		void OnGoToLog (object o, EventArgs args)
+		{
+			var rows = view.Selection.GetSelectedRows ();
+			if (!rows.Any ())
+				return;
+
+			TreeIter iter, sortedIter;
+			if (view.Model.GetIter (out sortedIter, rows [0])) {
+				iter = filter.ConvertIterToChildIter (sort.ConvertIterToChildIter (sortedIter));
+				store.SetValue (iter, DataColumns.Read, true);
+				TaskListEntry task = store.GetValue (iter, DataColumns.Task) as TaskListEntry;
+				if (task != null) {
+					//TaskService.ShowStatus (task);
+
+					OpenBuildOutputViewDocument ();
+
+					task.JumpToLogStructureOutput (task);
+					//TaskService.Errors.CurrentLocationTask = task;
+					//IdeApp.Workbench.ActiveLocationList = TaskService.Errors;
+				}
+			}
 		}
 
 		void OnShowReference (object o, EventArgs args)
@@ -1024,6 +1053,11 @@ namespace MonoDevelop.Ide.Gui.Pads
 
 		Document buildOutputDoc;
 		void HandleLogBtnClicked (object sender, EventArgs e)
+		{
+			OpenBuildOutputViewDocument ();
+		}
+
+		void OpenBuildOutputViewDocument () 
 		{
 			if (buildOutputViewContent == null) {
 				buildOutputViewContent = new BuildOutputViewContent (buildOutput);

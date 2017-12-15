@@ -257,6 +257,48 @@ namespace MonoDevelop.Ide.Tasks
 				DesktopService.ShowUrl (DocumentationLink);
 		}
 
+		public void JumpToLogStructureOutput (TaskListEntry t)
+		{
+			var opened = IdeApp.Workbench.GetDocument ("Build Output");
+			if (opened != null) {
+				opened.Select ();
+
+				var content = opened.GetContent<BuildOutputView.BuildOutputViewContent> ();
+				if (content != null) {
+					content.GoTo (t);
+				}
+			}
+
+			//if (!file.IsNullOrEmpty) {
+			//	if (System.IO.File.Exists (file)) {
+			//		var project = WorkspaceObject as Project;
+			//		IdeApp.Workbench.OpenDocument (file, project, Math.Max (1, line), Math.Max (1, column));
+
+
+			//		//buildOutputViewContent = new BuildOutputViewContent (buildOutput);
+			//		//+buildOutputDoc = IdeApp.Workbench.OpenDocument (buildOutputViewContent, true);
+			//		//+buildOutputDoc.Closed += BuildOutputDocClosed;
+			//		     // buildOutputDoc.Select ();//
+			//	} else {
+			//		var pad = IdeApp.Workbench.GetPad<ErrorListPad> ()?.Content as ErrorListPad;
+			//		pad?.FocusOutputView ();
+			//		ShowDocumentation ();
+			//	}
+			//} else if (parentObject != null) {
+			//	Pad pad = IdeApp.Workbench.GetPad<ProjectSolutionPad> ();
+			//	ProjectSolutionPad spad = pad.Content as ProjectSolutionPad;
+			//	ITreeNavigator nav = spad.TreeView.GetNodeAtObject (parentObject, true);
+			//	if (nav != null) {
+			//		nav.ExpandToNode ();
+			//		nav.Selected = true;
+			//		nav.Expanded = true;
+			//	}
+			//	ShowDocumentation ();
+			//}
+			//TaskService.InformJumpToTask (this);
+		}
+
+
 		public virtual void JumpToPosition ()
 		{
 			if (!file.IsNullOrEmpty) {

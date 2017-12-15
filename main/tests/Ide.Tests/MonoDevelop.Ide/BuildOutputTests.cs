@@ -43,7 +43,7 @@ namespace MonoDevelop.Ide
 		}
 
 		[Test]
-		public async Task CustomProject_ToTextEditor ()
+		public void CustomProject_ToTextEditor ()
 		{
 			var bo = new BuildOutput ();
 			var monitor = bo.GetProgressMonitor ();
@@ -53,7 +53,7 @@ namespace MonoDevelop.Ide
 			monitor.LogObject (new ProjectFinishedProgressEvent ());
 
 			var editor = TextEditorFactory.CreateNewEditor ();
-			var result = await bo.ToTextEditor (editor, true);
+			var result = bo.ToTextEditor (editor, true);
 
 			Assert.That (result.Item1, Is.Not.Empty);
 			Assert.That (result.Item1, Contains.Substring ("Custom project built"));

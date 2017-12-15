@@ -23,6 +23,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Linq;
 
 using System;
 using System.Collections.Generic;
@@ -43,6 +44,24 @@ namespace MonoDevelop.Ide.BuildOutputView
 		Warning,
 		Message,
 		Diagnostics
+	}
+
+	static class BuildOutputNodeExtensions
+	{
+		public static IEnumerable<BuildOutputNode> SearchNodes (this BuildOutputNode buildOutputNode, BuildOutputNodeType type, string search = null)
+		{
+			foreach (var node in buildOutputNode.Children) {
+				foreach (var item in SearchNodes (node, type, search)) {
+					yield return item;
+				}
+			}
+
+			if (search == null) {
+				if (type == buildOutputNode.NodeType)
+					yield return buildOutputNode;
+			} else if (search == buildOutputNode?.Message && type == buildOutputNode.NodeType)
+				yield return buildOutputNode;
+		}
 	}
 
 	class BuildOutputNode
@@ -147,25 +166,33 @@ namespace MonoDevelop.Ide.BuildOutputView
 			if (node.Children.Count > 0) {
 				ProcessChildren (editor, node.Children, tabPosition, buildOutput, segments, includeDiagnostics, startAtOffset);
 
-				segments.Add (FoldSegmentFactory.CreateFoldSegment (editor, startAtOffset + currentPosition, buildOutput.Length - currentPosition,
-				                                                    node.Parent != null && !node.HasErrors,
-				                                                    node.Message,
-																	FoldingType.Region));
+				var segment = FoldSegmentFactory.CreateFoldSegment (editor, startAtOffset + currentPosition, buildOutput.Length - currentPosition,
+																	node.Parent != null && !node.HasErrors,
+																	node.Message,
+																	FoldingType.Region);
+				segments.Add (segment);
 			}
 		}
 
-		public Task<(string, IList<IFoldSegment>)> ToTextEditor (TextEditor editor, bool includeDiagnostics, int startAtOffset)
+		public List<BuildOutputNode> SearchNodes (BuildOutputNodeType type, string search = null)
 		{
-			return Task.Run (() => {
-				var buildOutput = new StringBuilder ();
-				var foldingSegments = new List<IFoldSegment> ();
-
-				foreach (var node in rootNodes) {
-					ProcessNode (editor, node, 0, buildOutput, foldingSegments, includeDiagnostics, startAtOffset);
+			var elements = new List<BuildOutputNode> ();
+			foreach (var item in rootNodes) {
+				foreach (var node in item.SearchNodes (type, search)) {
+					elements.Add (node);
 				}
+			}
+			return elements;
+		}
 
-				return (buildOutput.ToString (), (IList<IFoldSegment>)foldingSegments);
-			});
+		public (string, IList<IFoldSegment>) ToTextEditor (TextEditor editor, bool includeDiagnostics, int startAtOffset)
+		{
+			var buildOutput = new StringBuilder ();
+			var foldingSegments = new List<IFoldSegment> ();
+			foreach (var node in rootNodes) {
+				ProcessNode (editor, node, 0, buildOutput, foldingSegments, includeDiagnostics, startAtOffset);
+			}
+			return (buildOutput.ToString (), (IList<IFoldSegment>)foldingSegments);
 		}
 
 		bool disposed = false;
@@ -192,6 +219,13 @@ namespace MonoDevelop.Ide.BuildOutputView
 					GC.SuppressFinalize (this);
 				}
 			}
+		}
+
+		internal DocumentRegion GetDocumentRegion (BuildOutputNode errorNode)
+		{
+
+
+			return new DocumentRegion (10, 10, 0, 0);
 		}
 	}
 }
